@@ -587,7 +587,7 @@ static Query *transform_cypher_union(cypher_parsestate *cpstate,
 
     nsitem = addRangeTableEntryForJoin(pstate, targetnames, sortnscolumns,
                                        JOIN_INNER, 0, targetvars, NIL, NIL,
-                                       NULL, false);
+                                       NULL, NULL, false);
 
     sv_namespace = pstate->p_namespace;
     pstate->p_namespace = NIL;
@@ -1341,7 +1341,8 @@ static Query *transform_cypher_unwind(cypher_parsestate *cpstate,
 
     expr = transform_cypher_expr(cpstate, self->target->val, EXPR_KIND_SELECT_TARGET);
 
-    unwind = makeFuncCall(list_make1(makeString("age_unnest")), NIL, -1);
+    unwind = makeFuncCall(list_make1(makeString("age_unnest")), NIL,
+                          COERCE_SQL_SYNTAX, -1);
 
     old_expr_kind = pstate->p_expr_kind;
     pstate->p_expr_kind = EXPR_KIND_SELECT_TARGET;
@@ -1663,7 +1664,7 @@ cypher_update_information *transform_cypher_set_item_list(
                                             makeString("age_properties"));
                 args = list_make1(set_item->expr);
                 set_item->expr = (Node *)makeFuncCall(qualified_name, args,
-                                                      -1);
+                                                      COERCE_SQL_SYNTAX, -1);
             }
         }
         else if (!IsA(set_item->prop, A_Indirection))
@@ -2516,6 +2517,7 @@ static RangeTblEntry *transform_cypher_optional_match_clause(cypher_parsestate *
                                         NIL,
                                         NIL,
                                         j->alias,
+                                        NULL,
                                         false);
 
     j->rtindex = jnsitem->p_rtindex;
@@ -3037,7 +3039,7 @@ static FuncCall *prevent_duplicate_edges(cypher_parsestate *cpstate,
         }
     }
 
-    return makeFuncCall(qualified_function_name, edges, -1);
+    return makeFuncCall(qualified_function_name, edges, COERCE_SQL_SYNTAX, -1);
 }
 
 /*
@@ -3153,7 +3155,7 @@ static List *make_join_condition_for_edge(cypher_parsestate *cpstate,
             args = list_make3(left_id, right_id, entity->expr);
 
             // add to quals
-            quals = lappend(quals, makeFuncCall(qualified_func_name, args, -1));
+            quals = lappend(quals, makeFuncCall(qualified_func_name, args, COERCE_EXPLICIT_CALL, -1));
         }
 
         /*
@@ -3179,7 +3181,7 @@ static List *make_join_condition_for_edge(cypher_parsestate *cpstate,
             args = list_make2(prev_edge->expr, entity->expr);
 
             // create the function call
-            fc = makeFuncCall(qualified_name, args, -1);
+            fc = makeFuncCall(qualified_name, args, COERCE_EXPLICIT_CALL, -1);
 
             quals = lappend(quals, fc);
         }
@@ -3414,7 +3416,7 @@ static List *join_to_entity(cypher_parsestate *cpstate,
         args = list_make3(entity->expr, qual, make_bool_a_const(is_left_side));
 
         // create the function call
-        fc = makeFuncCall(qualified_name, args, -1);
+        fc = makeFuncCall(qualified_name, args, COERCE_EXPLICIT_CALL, -1);
 
         quals = lappend(quals, fc);
 
@@ -3513,7 +3515,7 @@ static A_Expr *filter_vertices_on_label_id(cypher_parsestate *cpstate,
     extract_label_id = makeString("_extract_label_id");
 
     fc = makeFuncCall(list_make2(ag_catalog, extract_label_id),
-                      list_make1(id_field), -1);
+                      list_make1(id_field), COERCE_EXPLICIT_CALL, -1);
 
     return makeSimpleA_Expr(AEXPR_OP, "=", (Node *)fc, (Node *)n, -1);
 }
@@ -4148,12 +4150,13 @@ static Node *make_qual(cypher_parsestate *cpstate,
 
 
         args = list_make1(entity->expr);
-        node = (Node *)makeFuncCall(qualified_name, args, -1);
+        node = (Node *)makeFuncCall(qualified_name, args, COERCE_EXPLICIT_CALL, -1);
     }
     else
     {
         char *entity_name;
         ColumnRef *cr = makeNode(ColumnRef);
+        
 
         // cast graphid to agtype
         qualified_name = list_make2(makeString("ag_catalog"),
@@ -5628,6 +5631,7 @@ transform_merge_make_lateral_join(cypher_parsestate *cpstate, Query *query,
                                         NIL,
                                         NIL,
                                         j->alias,
+                                        NULL,
                                         true);
 
     j->rtindex = jnsitem->p_rtindex;
