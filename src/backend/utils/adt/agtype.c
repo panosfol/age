@@ -29,7 +29,6 @@
  */
 
 #include "postgres.h"
-
 #include <math.h>
 
 #include "access/genam.h"
@@ -54,7 +53,6 @@
 #include "utils/builtins.h"
 #include "utils/float.h"
 #include "utils/fmgroids.h"
-#include "utils/int8.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
@@ -959,7 +957,7 @@ static void agtype_in_scalar(void *pstate, char *token,
     case AGTYPE_TOKEN_INTEGER:
         Assert(token != NULL);
         v.type = AGTV_INTEGER;
-        scanint8(token, false, &v.val.int_value);
+        v.val.int_value = pg_strtoint64(token);
         break;
     case AGTYPE_TOKEN_FLOAT:
         Assert(token != NULL);
@@ -5247,18 +5245,23 @@ Datum age_tointeger(PG_FUNCTION_ARGS)
         }
         else if (type == CSTRINGOID || type == TEXTOID)
         {
+            int64 i;
+            char* endptr;
+            
             if (type == CSTRINGOID)
                 string = DatumGetCString(arg);
             else
                 string = text_to_cstring(DatumGetTextPP(arg));
 
             /* convert it if it is a regular integer string */
-            is_valid = scanint8(string, true, &result);
+            errno = 0;
+            i = strtoi64(string, &endptr, 10);
+            
             /*
              * If it isn't an integer string, try converting it as a float
              * string.
              */
-            if (!is_valid)
+            if (errno != 0 || *endptr != '\0')
             {
                 float f;
 
@@ -5322,16 +5325,20 @@ Datum age_tointeger(PG_FUNCTION_ARGS)
         }
         else if (agtv_value->type == AGTV_STRING)
         {
+            int64 i; 
+            char *endptr; 
             /* we need a null terminated cstring */
             string = strndup(agtv_value->val.string.val,
                              agtv_value->val.string.len);
             /* convert it if it is a regular integer string */
-            is_valid = scanint8(string, true, &result);
+            errno = 0;
+            i = strtoi64(string, &endptr, 10);
+
             /*
              * If it isn't an integer string, try converting it as a float
              * string.
              */
-            if (!is_valid)
+            if (errno != 0 || *endptr != '\0')
             {
                 float f;
 

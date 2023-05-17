@@ -91,14 +91,22 @@ void ag_ProcessUtility_hook(PlannedStmt *pstmt, const char *queryString, bool re
                              QueryEnvironment *queryEnv, DestReceiver *dest,
                              QueryCompletion *qc)
 {
+    
     if (is_age_drop(pstmt))
         drop_age_extension((DropStmt *)pstmt->utilityStmt);
     else if (prev_process_utility_hook)
         (*prev_process_utility_hook) (pstmt, queryString, readOnlyTree, context, params,
                                       queryEnv, dest, qc);
     else
+    {
+        Assert(IsA(pstmt, PlannedStmt));
+        Assert(pstmt->commandType == CMD_UTILITY);
+        Assert(queryString != NULL);	/* required as of 8.4 */
+        Assert(qc == NULL || qc->commandTag == CMDTAG_UNKNOWN);
         standard_ProcessUtility(pstmt, queryString, readOnlyTree, context, params, queryEnv,
                                 dest, qc);
+    }
+        
 }
 
 static void drop_age_extension(DropStmt *stmt)
@@ -137,8 +145,8 @@ static bool is_age_drop(PlannedStmt *pstmt)
 
         if (IsA(obj, String))
         {
-            Value *val = (Value *)obj;
-            char *str = val->val.str;
+            String *val = (String *)obj;
+            char *str = val->sval;
 
             if (!pg_strcasecmp(str, "age"))
                 return true;
