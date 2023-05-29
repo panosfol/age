@@ -219,7 +219,7 @@ static Node *transform_A_Const(cypher_parsestate *cpstate, A_Const *ac)
         break;
     case T_Float:
         {
-            char *n = strVal(&ac->val);
+	    char *n = ac->val.sval.sval;
             char *endptr;
             int64 i;
             errno = 0;
@@ -241,10 +241,17 @@ static Node *transform_A_Const(cypher_parsestate *cpstate, A_Const *ac)
     case T_String:
         d = string_to_agtype(strVal(&ac->val));
         break;
+    case T_Boolean:
+        d = boolean_to_agtype(boolVal(&ac->val));
+        break;
     default:
-        ereport(ERROR,
-                (errmsg_internal("unrecognized node type: %d", nodeTag(&ac->val))));
-        return NULL;
+        if (&ac->isnull) {
+	    is_null = true;
+	} else {
+	    ereport(ERROR,
+		  (errmsg_internal("unrecognized node type: %d", nodeTag(&ac->val))));
+	    return NULL;
+	}
     }
     cancel_parser_errposition_callback(&pcbstate);
 
