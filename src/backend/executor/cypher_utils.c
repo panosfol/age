@@ -48,6 +48,7 @@
 #include "utils/ag_cache.h"
 #include "utils/agtype.h"
 #include "utils/graphid.h"
+#include <stdbool.h>
 
 /*
  * Given the graph name and the label name, create a ResultRelInfo for the table
@@ -255,7 +256,7 @@ HeapTuple insert_entity_tuple_cid(ResultRelInfo *resultRelInfo,
     // Insert index entries for the tuple
     if (resultRelInfo->ri_NumIndices > 0)
     {
-        ExecInsertIndexTuples(resultRelInfo, elemTupleSlot, estate, false, false, NULL, NIL);
+      ExecInsertIndexTuples(resultRelInfo, elemTupleSlot, estate, false, false, NULL, NIL, false);
     }
 
     return tuple;

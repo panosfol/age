@@ -2604,7 +2604,7 @@ static List *make_target_list_from_join(ParseState *pstate, RangeTblEntry *rte)
     ListCell *lt;
     ListCell *ln;
 
-    AssertArg(rte->rtekind == RTE_JOIN);
+    Assert(rte->rtekind == RTE_JOIN);
 
     forboth(lt, rte->joinaliasvars, ln, rte->eref->colnames)
     {
@@ -2637,7 +2637,7 @@ static List *makeTargetListFromPNSItem(ParseState *pstate, ParseNamespaceItem *p
     rte = pnsi->p_rte;
 
     /* right now this is only for subqueries */
-    AssertArg(rte->rtekind == RTE_SUBQUERY);
+    Assert(rte->rtekind == RTE_SUBQUERY);
 
     rtindex = pnsi->p_rtindex;
 
@@ -4752,6 +4752,7 @@ transform_create_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     Relation label_relation;
     RangeVar *rv;
     RangeTblEntry *rte;
+    RTEPermissionInfo *rte_pi;
     TargetEntry *te;
     char *alias;
     AttrNumber resno;
@@ -4845,7 +4846,8 @@ transform_create_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     pnsi = addRangeTableEntryForRelation((ParseState *)cpstate, label_relation,
                                         AccessShareLock, NULL, false, false);
     rte = pnsi->p_rte;
-    rte->requiredPerms = ACL_INSERT;
+    rte_pi = pnsi->p_perminfo;
+    rte_pi->requiredPerms = ACL_INSERT;
 
     // Build Id expression, always use the default logic
     rel->id_expr = (Expr *)build_column_default(label_relation,
@@ -5022,6 +5024,7 @@ transform_create_cypher_new_node(cypher_parsestate *cpstate,
     Relation label_relation;
     RangeVar *rv;
     RangeTblEntry *rte;
+    RTEPermissionInfo *rte_pi;
     TargetEntry *te;
     Expr *props;
     char *alias;
@@ -5073,7 +5076,8 @@ transform_create_cypher_new_node(cypher_parsestate *cpstate,
     pnsi = addRangeTableEntryForRelation((ParseState *)cpstate, label_relation,
                                         AccessShareLock, NULL, false, false);
     rte = pnsi->p_rte;
-    rte->requiredPerms = ACL_INSERT;
+    rte_pi = pnsi->p_perminfo;
+    rte_pi->requiredPerms = ACL_INSERT;
 
     // id
     rel->id_expr = (Expr *)build_column_default(label_relation,
@@ -5796,6 +5800,7 @@ transform_merge_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     Relation label_relation;
     RangeVar *rv;
     RangeTblEntry *rte;
+    RTEPermissionInfo *rte_pi;
     ParseNamespaceItem *pnsi;
 
     if (edge->name != NULL)
@@ -5869,7 +5874,8 @@ transform_merge_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     pnsi = addRangeTableEntryForRelation((ParseState *)cpstate, label_relation,
                                          AccessShareLock, NULL, false, false);
     rte = pnsi->p_rte;
-    rte->requiredPerms = ACL_INSERT;
+    rte_pi = pnsi->p_perminfo;
+    rte_pi->requiredPerms = ACL_INSERT;
 
     // Build Id expression, always use the default logic
     rel->id_expr = (Expr *)build_column_default(label_relation,
@@ -5896,6 +5902,7 @@ transform_merge_cypher_node(cypher_parsestate *cpstate, List **target_list,
     Relation label_relation;
     RangeVar *rv;
     RangeTblEntry *rte;
+    RTEPermissionInfo *rte_pi;
     ParseNamespaceItem *pnsi;
 
     if (node->name != NULL)
@@ -5976,7 +5983,8 @@ transform_merge_cypher_node(cypher_parsestate *cpstate, List **target_list,
     pnsi = addRangeTableEntryForRelation((ParseState *)cpstate, label_relation,
                                          AccessShareLock, NULL, false, false);
     rte = pnsi->p_rte;
-    rte->requiredPerms = ACL_INSERT;
+    rte_pi = pnsi->p_perminfo;
+    rte_pi->requiredPerms = ACL_INSERT;
 
     // id
     rel->id_expr = (Expr *)build_column_default(label_relation,
