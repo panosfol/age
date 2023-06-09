@@ -5805,7 +5805,6 @@ transform_merge_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     RangeVar *rv;
     RTEPermissionInfo *rte_pi;
     ParseNamespaceItem *pnsi;
-    ListCell *lc;
 
     if (edge->name != NULL)
     {
