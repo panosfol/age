@@ -1966,7 +1966,6 @@ Datum _agtype_build_path(PG_FUNCTION_ARGS)
      */
     if (nargs >= 1 && nargs <= 3)
     {
-        int i = 0;
 
         for (i = 0; i < nargs; i++)
         {
@@ -3871,7 +3870,7 @@ Datum agtype_hash_cmp(PG_FUNCTION_ARGS)
     uint64 seed = 0xF0F0F0F0;
 
     if (PG_ARGISNULL(0))
-        PG_RETURN_INT16(0);
+        PG_RETURN_INT64(0);
 
     agt = AG_GET_ARG_AGTYPE_P(0);
 
@@ -3894,7 +3893,7 @@ Datum agtype_hash_cmp(PG_FUNCTION_ARGS)
         seed = LEFT_ROTATE(seed, 1);
     }
 
-    PG_RETURN_INT16(hash);
+    PG_RETURN_INT64(hash);
 }
 
 // Comparision function for btree Indexes
@@ -5449,7 +5448,7 @@ PG_FUNCTION_INFO_V1(graphid_to_agtype);
 
 Datum graphid_to_agtype(PG_FUNCTION_ARGS)
 {
-    PG_RETURN_POINTER(integer_to_agtype(AG_GETARG_GRAPHID(0)));
+    PG_RETURN_DATUM(integer_to_agtype(AG_GETARG_GRAPHID(0)));
 }
 
 PG_FUNCTION_INFO_V1(agtype_to_graphid);
