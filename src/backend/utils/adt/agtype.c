@@ -3870,7 +3870,7 @@ Datum agtype_hash_cmp(PG_FUNCTION_ARGS)
     uint64 seed = 0xF0F0F0F0;
 
     if (PG_ARGISNULL(0))
-        PG_RETURN_INT64(0);
+        PG_RETURN_INT32(0);
 
     agt = AG_GET_ARG_AGTYPE_P(0);
 
@@ -3893,7 +3893,7 @@ Datum agtype_hash_cmp(PG_FUNCTION_ARGS)
         seed = LEFT_ROTATE(seed, 1);
     }
 
-    PG_RETURN_INT64(hash);
+    PG_RETURN_INT32(hash);
 }
 
 // Comparision function for btree Indexes
