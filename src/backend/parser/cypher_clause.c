@@ -623,6 +623,7 @@ static Query *transform_cypher_union(cypher_parsestate *cpstate,
                                               EXPR_KIND_LIMIT, "LIMIT");
 
     qry->rtable = pstate->p_rtable;
+    qry->rteperminfos = cpstate->pstate.p_rteperminfos;
     qry->jointree = makeFromExpr(pstate->p_joinlist, NULL);
     qry->hasAggs = pstate->p_hasAggs;
 
@@ -1219,6 +1220,7 @@ static Query *transform_cypher_call_subquery(cypher_parsestate *cpstate,
     markTargetListOrigins(pstate, query->targetList);
 
     query->rtable = cpstate->pstate.p_rtable;
+    query->rteperminfos = cpstate->pstate.p_rteperminfos;
     query->jointree = makeFromExpr(cpstate->pstate.p_joinlist, (Node *)where_qual);
     query->hasAggs = pstate->p_hasAggs;
 
@@ -1291,6 +1293,7 @@ static Query *transform_cypher_delete(cypher_parsestate *cpstate,
     query->targetList = lappend(query->targetList, tle);
 
     query->rtable = pstate->p_rtable;
+    query->rteperminfos = cpstate->pstate.p_rteperminfos;
     query->jointree = makeFromExpr(pstate->p_joinlist, NULL);
 
     return query;
@@ -1359,6 +1362,7 @@ static Query *transform_cypher_unwind(cypher_parsestate *cpstate,
 
     query->targetList = lappend(query->targetList, te);
     query->rtable = pstate->p_rtable;
+    query->rteperminfos = cpstate->pstate.p_rteperminfos;
     query->jointree = makeFromExpr(pstate->p_joinlist, NULL);
     query->hasTargetSRFs = pstate->p_hasTargetSRFs;
 
@@ -2313,6 +2317,7 @@ static Query *transform_cypher_clause_with_where(cypher_parsestate *cpstate,
         markTargetListOrigins(pstate, query->targetList);
 
         query->rtable = pstate->p_rtable;
+        query->rteperminfos = pstate->p_rteperminfos;
 
         if (is_ag_node(clause->self, cypher_call))
         {
@@ -2556,6 +2561,7 @@ static Query *transform_cypher_match_pattern(cypher_parsestate *cpstate,
 
         query->targetList = make_target_list_from_join(pstate, rte);
         query->rtable = pstate->p_rtable;
+        query->rteperminfos = pstate->p_rteperminfos;
         query->jointree = makeFromExpr(pstate->p_joinlist, NULL);
     }
     else
@@ -2716,6 +2722,7 @@ static Query *transform_cypher_sub_pattern(cypher_parsestate *cpstate,
     markTargetListOrigins(p_child_parse_state, qry->targetList);
 
     qry->rtable = p_child_parse_state->p_rtable;
+    qry->rteperminfos = p_child_parse_state->p_rteperminfos;
     qry->jointree = makeFromExpr(p_child_parse_state->p_joinlist, NULL);
 
     /* the state will be destroyed so copy the data we need */
@@ -3002,6 +3009,7 @@ static void transform_match_pattern(cypher_parsestate *cpstate, Query *query,
     }
 
     query->rtable = cpstate->pstate.p_rtable;
+    query->rteperminfos = cpstate->pstate.p_rteperminfos;
     query->jointree = makeFromExpr(cpstate->pstate.p_joinlist, (Node *)expr);
 }
 
@@ -3169,7 +3177,7 @@ static List *make_join_condition_for_edge(cypher_parsestate *cpstate,
             prev_edge != NULL &&
             prev_edge->type == ENT_VLE_EDGE)
         {
-            List *qualified_name, *args;
+            List *qualified_name;
             String *match_qual;
             FuncCall *fc;
 
@@ -4222,7 +4230,6 @@ static Expr *transform_cypher_edge(cypher_parsestate *cpstate,
 
     if (rel->name != NULL)
     {
-        TargetEntry *te;
         Node *expr;
 
         /*
@@ -4374,7 +4381,6 @@ static Expr *transform_cypher_node(cypher_parsestate *cpstate,
 
     if (node->name != NULL)
     {
-        TargetEntry *te;
         Node *expr;
 
         /*
@@ -4633,6 +4639,7 @@ static Query *transform_cypher_create(cypher_parsestate *cpstate,
     query->targetList = lappend(query->targetList, tle);
 
     query->rtable = pstate->p_rtable;
+    query->rteperminfos = pstate->p_rteperminfos;
     query->jointree = makeFromExpr(pstate->p_joinlist, NULL);
 
     return query;
@@ -4751,7 +4758,6 @@ transform_create_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     Expr *props;
     Relation label_relation;
     RangeVar *rv;
-    RangeTblEntry *rte;
     RTEPermissionInfo *rte_pi;
     TargetEntry *te;
     char *alias;
@@ -4825,7 +4831,6 @@ transform_create_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     if (!label_exists(edge->label, cpstate->graph_oid))
     {
         List *parent;
-        RangeVar *rv;
 
         rv = get_label_range_var(cpstate->graph_name, cpstate->graph_oid,
                                  AG_DEFAULT_LABEL_EDGE);
@@ -4843,9 +4848,8 @@ transform_create_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     // Store the relid
     rel->relid = RelationGetRelid(label_relation);
 
-    pnsi = addRangeTableEntryForRelation((ParseState *)cpstate, label_relation,
+    pnsi = addRangeTableEntryForRelation(&cpstate->pstate, label_relation,
                                         AccessShareLock, NULL, false, false);
-    rte = pnsi->p_rte;
     rte_pi = pnsi->p_perminfo;
     rte_pi->requiredPerms = ACL_INSERT;
 
@@ -5023,7 +5027,6 @@ transform_create_cypher_new_node(cypher_parsestate *cpstate,
     cypher_target_node *rel = make_ag_node(cypher_target_node);
     Relation label_relation;
     RangeVar *rv;
-    RangeTblEntry *rte;
     RTEPermissionInfo *rte_pi;
     TargetEntry *te;
     Expr *props;
@@ -5054,7 +5057,6 @@ transform_create_cypher_new_node(cypher_parsestate *cpstate,
     if (!label_exists(node->label, cpstate->graph_oid))
     {
         List *parent;
-        RangeVar *rv;
 
         rv = get_label_range_var(cpstate->graph_name, cpstate->graph_oid,
                                  AG_DEFAULT_LABEL_VERTEX);
@@ -5073,9 +5075,8 @@ transform_create_cypher_new_node(cypher_parsestate *cpstate,
     // Store the relid
     rel->relid = RelationGetRelid(label_relation);
 
-    pnsi = addRangeTableEntryForRelation((ParseState *)cpstate, label_relation,
+    pnsi = addRangeTableEntryForRelation(&cpstate->pstate, label_relation,
                                         AccessShareLock, NULL, false, false);
-    rte = pnsi->p_rte;
     rte_pi = pnsi->p_perminfo;
     rte_pi->requiredPerms = ACL_INSERT;
 
@@ -5490,7 +5491,7 @@ static Query *transform_cypher_merge(cypher_parsestate *cpstate,
     else
     {
         // make the merge node into a match node
-        cypher_clause *merge_clause_as_match = convert_merge_to_match(self);
+        merge_clause_as_match = convert_merge_to_match(self);
 
         /*
          * Create the metadata needed for creating missing paths.
@@ -5542,6 +5543,7 @@ static Query *transform_cypher_merge(cypher_parsestate *cpstate,
     markTargetListOrigins(pstate, query->targetList);
 
     query->rtable = pstate->p_rtable;
+    query->rteperminfos = pstate->p_rteperminfos;
     query->jointree = makeFromExpr(pstate->p_joinlist, NULL);
 
     query->hasSubLinks = pstate->p_hasSubLinks;
@@ -5799,7 +5801,6 @@ transform_merge_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     cypher_target_node *rel = make_ag_node(cypher_target_node);
     Relation label_relation;
     RangeVar *rv;
-    RangeTblEntry *rte;
     RTEPermissionInfo *rte_pi;
     ParseNamespaceItem *pnsi;
 
@@ -5848,7 +5849,6 @@ transform_merge_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     if (edge->label && !label_exists(edge->label, cpstate->graph_oid))
     {
         List *parent;
-        RangeVar *rv;
 
         /*
          * setup the default edge table as the parent table, that we
@@ -5871,9 +5871,8 @@ transform_merge_cypher_edge(cypher_parsestate *cpstate, List **target_list,
     // Store the relid
     rel->relid = RelationGetRelid(label_relation);
 
-    pnsi = addRangeTableEntryForRelation((ParseState *)cpstate, label_relation,
+    pnsi = addRangeTableEntryForRelation(&cpstate->pstate, label_relation,
                                          AccessShareLock, NULL, false, false);
-    rte = pnsi->p_rte;
     rte_pi = pnsi->p_perminfo;
     rte_pi->requiredPerms = ACL_INSERT;
 
@@ -5901,7 +5900,6 @@ transform_merge_cypher_node(cypher_parsestate *cpstate, List **target_list,
     cypher_target_node *rel = make_ag_node(cypher_target_node);
     Relation label_relation;
     RangeVar *rv;
-    RangeTblEntry *rte;
     RTEPermissionInfo *rte_pi;
     ParseNamespaceItem *pnsi;
 
@@ -5956,7 +5954,6 @@ transform_merge_cypher_node(cypher_parsestate *cpstate, List **target_list,
     if (node->label && !label_exists(node->label, cpstate->graph_oid))
     {
         List *parent;
-        RangeVar *rv;
 
         /*
          * setup the default vertex table as the parent table, that we
@@ -5980,9 +5977,8 @@ transform_merge_cypher_node(cypher_parsestate *cpstate, List **target_list,
     // Store the relid
     rel->relid = RelationGetRelid(label_relation);
 
-    pnsi = addRangeTableEntryForRelation((ParseState *)cpstate, label_relation,
+    pnsi = addRangeTableEntryForRelation(&cpstate->pstate, label_relation,
                                          AccessShareLock, NULL, false, false);
-    rte = pnsi->p_rte;
     rte_pi = pnsi->p_perminfo;
     rte_pi->requiredPerms = ACL_INSERT;
 
