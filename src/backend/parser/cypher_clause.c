@@ -4468,7 +4468,6 @@ static Expr *transform_cypher_node(cypher_parsestate *cpstate,
 
     resno = pstate->p_next_resno++;
 
-    expr = (Expr *)make_vertex_expr(cpstate, pnsi, node->label);
     if (valid_label)
     {
         expr = (Expr *)make_vertex_expr(cpstate, pnsi, node->label);
