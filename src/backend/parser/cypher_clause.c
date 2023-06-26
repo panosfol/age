@@ -453,7 +453,7 @@ static cypher_clause *make_cypher_clause(List *stmt)
 static Query *transform_cypher_union(cypher_parsestate *cpstate,
                                      cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     Query *qry = makeNode(Query);
     int leftmostRTI;
     Query *leftmostQuery;
@@ -623,7 +623,7 @@ static Query *transform_cypher_union(cypher_parsestate *cpstate,
                                               EXPR_KIND_LIMIT, "LIMIT");
 
     qry->rtable = pstate->p_rtable;
-    qry->rteperminfos = cpstate->pstate.p_rteperminfos;
+    qry->rteperminfos = pstate->p_rteperminfos;
     qry->jointree = makeFromExpr(pstate->p_joinlist, NULL);
     qry->hasAggs = pstate->p_hasAggs;
 
@@ -662,7 +662,7 @@ transform_cypher_union_tree(cypher_parsestate *cpstate, cypher_clause *clause,
 {
     bool isLeaf;
 
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_return *cmp;
     ParseNamespaceItem *pnsi;
 
@@ -1041,7 +1041,7 @@ transform_cypher_union_tree(cypher_parsestate *cpstate, cypher_clause *clause,
 static Query *transform_cypher_call_stmt(cypher_parsestate *cpstate,
                                           cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_call *self = (cypher_call *)clause->self;
 
     if (!clause->prev && !clause->next) /* CALL [YIELD] -- the most simple call */
@@ -1098,7 +1098,7 @@ static Query *transform_cypher_call_stmt(cypher_parsestate *cpstate,
 static Query *transform_cypher_call_subquery(cypher_parsestate *cpstate,
                                              cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     ParseState *p_child_parse_state = make_parsestate(NULL);
     cypher_call *self = (cypher_call *)clause->self;
     Query *query;
@@ -1219,9 +1219,9 @@ static Query *transform_cypher_call_subquery(cypher_parsestate *cpstate,
 
     markTargetListOrigins(pstate, query->targetList);
 
-    query->rtable = cpstate->pstate.p_rtable;
-    query->rteperminfos = cpstate->pstate.p_rteperminfos;
-    query->jointree = makeFromExpr(cpstate->pstate.p_joinlist, (Node *)where_qual);
+    query->rtable = pstate->p_rtable;
+    query->rteperminfos = pstate->p_rteperminfos;
+    query->jointree = makeFromExpr(pstate->p_joinlist, (Node *)where_qual);
     query->hasAggs = pstate->p_hasAggs;
 
     assign_query_collations(pstate, query);
@@ -1246,7 +1246,7 @@ static Query *transform_cypher_call_subquery(cypher_parsestate *cpstate,
 static Query *transform_cypher_delete(cypher_parsestate *cpstate,
                                       cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_delete *self = (cypher_delete *)clause->self;
     Query *query;
     TargetEntry *tle;
@@ -1293,7 +1293,7 @@ static Query *transform_cypher_delete(cypher_parsestate *cpstate,
     query->targetList = lappend(query->targetList, tle);
 
     query->rtable = pstate->p_rtable;
-    query->rteperminfos = cpstate->pstate.p_rteperminfos;
+    query->rteperminfos = pstate->p_rteperminfos;
     query->jointree = makeFromExpr(pstate->p_joinlist, NULL);
 
     return query;
@@ -1308,7 +1308,7 @@ static Query *transform_cypher_delete(cypher_parsestate *cpstate,
 static Query *transform_cypher_unwind(cypher_parsestate *cpstate,
                                       cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *) cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_unwind *self = (cypher_unwind *) clause->self;
     int target_syntax_loc;
     Query *query;
@@ -1362,7 +1362,7 @@ static Query *transform_cypher_unwind(cypher_parsestate *cpstate,
 
     query->targetList = lappend(query->targetList, te);
     query->rtable = pstate->p_rtable;
-    query->rteperminfos = cpstate->pstate.p_rteperminfos;
+    query->rteperminfos = pstate->p_rteperminfos;
     query->jointree = makeFromExpr(pstate->p_joinlist, NULL);
     query->hasTargetSRFs = pstate->p_hasTargetSRFs;
 
@@ -1379,7 +1379,7 @@ static List *transform_cypher_delete_item_list(cypher_parsestate *cpstate,
                                                List *delete_item_list,
                                                Query *query)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     List *items = NIL;
     ListCell *lc;
 
@@ -1440,7 +1440,7 @@ static List *transform_cypher_delete_item_list(cypher_parsestate *cpstate,
 static Query *transform_cypher_set(cypher_parsestate *cpstate,
                                    cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_set *self = (cypher_set *)clause->self;
     Query *query;
     cypher_update_information *set_items_target_list;
@@ -1512,7 +1512,7 @@ static Query *transform_cypher_set(cypher_parsestate *cpstate,
 cypher_update_information *transform_cypher_remove_item_list(
     cypher_parsestate *cpstate, List *remove_item_list, Query *query)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     ListCell *li;
     cypher_update_information *info = make_ag_node(cypher_update_information);
 
@@ -1617,7 +1617,7 @@ cypher_update_information *transform_cypher_remove_item_list(
 cypher_update_information *transform_cypher_set_item_list(
     cypher_parsestate *cpstate, List *set_item_list, Query *query)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     ListCell *li;
     cypher_update_information *info = make_ag_node(cypher_update_information);
 
@@ -2043,7 +2043,7 @@ static List * transform_group_clause(cypher_parsestate *cpstate,
 static Query *transform_cypher_return(cypher_parsestate *cpstate,
                                       cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_return *self = (cypher_return *)clause->self;
     Query *query;
     List *groupClause = NIL;
@@ -2114,7 +2114,7 @@ static List *transform_cypher_order_by(cypher_parsestate *cpstate,
                                        List *sort_items, List **target_list,
                                        ParseExprKind expr_kind)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     List *sort_list = NIL;
     ListCell *li;
 
@@ -2169,7 +2169,7 @@ static Node *transform_cypher_limit(cypher_parsestate *cpstate, Node *node,
                                     ParseExprKind expr_kind,
                                     const char *construct_name)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     Node *qual;
 
     if (!node)
@@ -2281,7 +2281,7 @@ static Query *transform_cypher_clause_with_where(cypher_parsestate *cpstate,
                                                  transform_method transform,
                                                  cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     Query *query;
     Node *self = clause->self;
     cypher_match *match_self;
@@ -2470,7 +2470,7 @@ static RangeTblEntry *transform_cypher_optional_match_clause(cypher_parsestate *
     cypher_clause *prevclause;
     RangeTblEntry *l_rte, *r_rte;
     ParseNamespaceItem *l_nsitem, *r_nsitem;
-    ParseState *pstate = (ParseState *) cpstate;
+    ParseState *pstate = &cpstate->pstate;
     JoinExpr* j = makeNode(JoinExpr);
     List *res_colnames = NIL, *res_colvars = NIL;
     Alias *l_alias, *r_alias;
@@ -2546,7 +2546,7 @@ static RangeTblEntry *transform_cypher_optional_match_clause(cypher_parsestate *
 static Query *transform_cypher_match_pattern(cypher_parsestate *cpstate,
                                              cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_match *self = (cypher_match *)clause->self;
     Query *query;
     Node *where = self->where;
@@ -2692,7 +2692,7 @@ static Query *transform_cypher_sub_pattern(cypher_parsestate *cpstate,
     cypher_match *match;
     cypher_clause *c;
     Query *qry;
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_sub_pattern *subpat = (cypher_sub_pattern*)clause->self;
     ParseNamespaceItem *pnsi;
     cypher_parsestate *child_parse_state = make_cypher_parsestate(cpstate);
@@ -2931,7 +2931,7 @@ static ParseNamespaceItem *transform_RangeFunction(cypher_parsestate *cpstate,
 static void transform_match_pattern(cypher_parsestate *cpstate, Query *query,
                                     List *pattern, Node *where)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     ListCell *lc;
     List *quals = NIL;
     Expr *q = NULL;
@@ -3008,9 +3008,9 @@ static void transform_match_pattern(cypher_parsestate *cpstate, Query *query,
         expr = (Expr *)coerce_to_boolean(pstate, (Node *)expr, "WHERE");
     }
 
-    query->rtable = cpstate->pstate.p_rtable;
-    query->rteperminfos = cpstate->pstate.p_rteperminfos;
-    query->jointree = makeFromExpr(cpstate->pstate.p_joinlist, (Node *)expr);
+    query->rtable = pstate->p_rtable;
+    query->rteperminfos = pstate->p_rteperminfos;
+    query->jointree = makeFromExpr(pstate->p_joinlist, (Node *)expr);
 }
 
 /*
@@ -3357,7 +3357,7 @@ static List *join_to_entity(cypher_parsestate *cpstate,
                             transform_entity *entity, Node *qual,
                             enum transform_entity_join_side side)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     A_Expr *expr;
     List *quals = NIL;
 
@@ -3445,7 +3445,7 @@ static List *make_edge_quals(cypher_parsestate *cpstate,
                              transform_entity *edge,
                              enum transform_entity_join_side side)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     char *left_dir;
     char *right_dir;
 
@@ -3538,7 +3538,7 @@ static Node *create_property_constraints(cypher_parsestate *cpstate,
                                          transform_entity *entity,
                                          Node *property_constraints)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     char *entity_name;
     ColumnRef *cr;
     Node *prop_expr, *const_expr;
@@ -3785,7 +3785,7 @@ static bool path_check_valid_label(cypher_path *path,
 static List *transform_match_entities(cypher_parsestate *cpstate, Query *query,
                                       cypher_path *path)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     ListCell *lc = NULL;
     List *entities = NIL;
     int i = 0;
@@ -4046,7 +4046,7 @@ static TargetEntry *
 transform_match_create_path_variable(cypher_parsestate *cpstate,
                                      cypher_path *path, List *entities)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     Oid build_path_oid;
     FuncExpr *fexpr;
     int resno;
@@ -4079,7 +4079,7 @@ transform_match_create_path_variable(cypher_parsestate *cpstate,
     fexpr = makeFuncExpr(build_path_oid, AGTYPEOID, entity_exprs, InvalidOid,
                          InvalidOid, COERCE_EXPLICIT_CALL);
 
-    resno = cpstate->pstate.p_next_resno++;
+    resno = pstate->p_next_resno++;
 
     // create the target entry
     return makeTargetEntry((Expr *)fexpr, resno, path->var_name, false);
@@ -4198,7 +4198,7 @@ static Expr *transform_cypher_edge(cypher_parsestate *cpstate,
                                    List **target_list,
                                    bool valid_label)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     char *schema_name;
     char *rel_name;
     RangeVar *label_range_var;
@@ -4344,7 +4344,7 @@ static Expr *transform_cypher_node(cypher_parsestate *cpstate,
                                    cypher_node *node, List **target_list,
                                    bool output_node, bool valid_label)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     char *schema_name;
     char *rel_name;
     RangeVar *label_range_var;
@@ -4494,7 +4494,7 @@ static Expr *transform_cypher_node(cypher_parsestate *cpstate,
 static Node *make_edge_expr(cypher_parsestate *cpstate, ParseNamespaceItem *pnsi,
                             char *label)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     Oid label_name_func_oid;
     Oid func_oid;
     Node *id, *start_id, *end_id;
@@ -4541,7 +4541,7 @@ static Node *make_edge_expr(cypher_parsestate *cpstate, ParseNamespaceItem *pnsi
 static Node *make_vertex_expr(cypher_parsestate *cpstate, ParseNamespaceItem *pnsi,
                               char *label)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     Oid label_name_func_oid;
     Oid func_oid;
     Node *id;
@@ -4586,7 +4586,7 @@ static Node *make_vertex_expr(cypher_parsestate *cpstate, ParseNamespaceItem *pn
 static Query *transform_cypher_create(cypher_parsestate *cpstate,
                                       cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_create *self = (cypher_create *)clause->self;
     cypher_create_target_nodes *target_nodes;
     Const *null_const;
@@ -4668,7 +4668,7 @@ static cypher_create_path *
 transform_cypher_create_path(cypher_parsestate *cpstate, List **target_list,
                              cypher_path *path)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     ListCell *lc;
     List *transformed_path = NIL;
     cypher_create_path *ccp = make_ag_node(cypher_create_path);
@@ -4753,7 +4753,7 @@ static cypher_target_node *
 transform_create_cypher_edge(cypher_parsestate *cpstate, List **target_list,
                              cypher_relationship *edge)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_target_node *rel = make_ag_node(cypher_target_node);
     Expr *props;
     Relation label_relation;
@@ -4877,7 +4877,7 @@ transform_create_cypher_edge(cypher_parsestate *cpstate, List **target_list,
 
 static bool variable_exists(cypher_parsestate *cpstate, char *name)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     Node *id;
     ParseNamespaceItem *pnsi;
 
@@ -4902,7 +4902,7 @@ static cypher_target_node *
 transform_create_cypher_node(cypher_parsestate *cpstate, List **target_list,
                              cypher_node *node)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
 
     if (node->label)
     {
@@ -5023,7 +5023,7 @@ static cypher_target_node *
 transform_create_cypher_new_node(cypher_parsestate *cpstate,
                                  List **target_list, cypher_node *node)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_target_node *rel = make_ag_node(cypher_target_node);
     Relation label_relation;
     RangeVar *rv;
@@ -5123,7 +5123,7 @@ transform_create_cypher_new_node(cypher_parsestate *cpstate,
 static TargetEntry *placeholder_target_entry(cypher_parsestate *cpstate,
                                              char *name)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     Expr *n;
     int resno;
 
@@ -5148,7 +5148,7 @@ static Expr *cypher_create_properties(cypher_parsestate *cpstate,
 
     if (props != NULL && is_ag_node(props, cypher_param))
     {
-        ParseState *pstate = (ParseState *) cpstate;
+        ParseState *pstate = &cpstate->pstate;
         cypher_param *param = (cypher_param *)props;
 
         ereport(ERROR,
@@ -5193,7 +5193,7 @@ transform_cypher_clause_as_subquery(cypher_parsestate *cpstate,
                                     Alias *alias,
                                     bool add_rte_to_query)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     Query *query;
     RangeTblEntry *rte;
     ParseExprKind old_expr_kind = pstate->p_expr_kind;
@@ -5455,7 +5455,7 @@ Query *cypher_parse_sub_analyze(Node *parseTree,
 static Query *transform_cypher_merge(cypher_parsestate *cpstate,
                                      cypher_clause *clause)
 {
-    ParseState *pstate = (ParseState *) cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_clause *merge_clause_as_match;
     cypher_create_path *merge_path;
     cypher_merge *self = (cypher_merge *)clause->self;
@@ -5566,7 +5566,7 @@ transform_merge_make_lateral_join(cypher_parsestate *cpstate, Query *query,
                                   cypher_clause *isolated_merge_clause)
 {
     cypher_create_path *merge_path;
-    ParseState *pstate = (ParseState *) cpstate;
+    ParseState *pstate = &cpstate->pstate;
     int i;
     Alias *l_alias;
     Alias *r_alias;
@@ -5797,7 +5797,7 @@ static cypher_target_node *
 transform_merge_cypher_edge(cypher_parsestate *cpstate, List **target_list,
                              cypher_relationship *edge)
 {
-    ParseState *pstate = (ParseState *)cpstate;
+    ParseState *pstate = &cpstate->pstate;
     cypher_target_node *rel = make_ag_node(cypher_target_node);
     Relation label_relation;
     RangeVar *rv;
@@ -6086,7 +6086,7 @@ static FuncExpr *make_clause_func_expr(char *function_name,
 static void handle_prev_clause(cypher_parsestate *cpstate, Query *query,
                                cypher_clause *clause, bool first_rte)
 {
-    ParseState *pstate = (ParseState *) cpstate;
+    ParseState *pstate = &cpstate->pstate;
 
     int rtindex;
     ParseNamespaceItem *pnsi;
@@ -6107,7 +6107,7 @@ static void handle_prev_clause(cypher_parsestate *cpstate, Query *query,
 
 ParseNamespaceItem *find_pnsi(cypher_parsestate *cpstate, char *varname)
 {
-    ParseState *pstate = (ParseState *) cpstate;
+    ParseState *pstate = &cpstate->pstate;
     ListCell *lc;
 
     foreach (lc, pstate->p_namespace)
