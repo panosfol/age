@@ -37,6 +37,7 @@
 #include "utils/date.h"
 #include "utils/datetime.h"
 
+#include "utils/agtype.h"
 #include "utils/agtype_parser.h"
 
 /*
