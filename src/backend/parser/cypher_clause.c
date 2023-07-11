@@ -4653,7 +4653,7 @@ static Node *make_edge_expr(cypher_parsestate *cpstate, ParseNamespaceItem *pnsi
     func_oid = get_ag_func_oid("_agtype_build_edge", 5, GRAPHIDOID, GRAPHIDOID,
                                GRAPHIDOID, CSTRINGOID, AGTYPEOID);
 
-    id = scanNSItemForColumn(pstate, pnsi, 0, AG_EDGE_COLNAME_ID, -1);
+    id = scanNSItemForColumn(pstate, pnsi, 0, "new_id", -1);
 
     start_id = scanNSItemForColumn(pstate, pnsi, 0, AG_EDGE_COLNAME_START_ID, -1);
 
@@ -4702,7 +4702,7 @@ static Node *make_vertex_expr(cypher_parsestate *cpstate, ParseNamespaceItem *pn
     func_oid = get_ag_func_oid("_agtype_build_vertex", 3, GRAPHIDOID,
                                CSTRINGOID, AGTYPEOID);
 
-    id = scanNSItemForColumn(pstate, pnsi, 0, AG_VERTEX_COLNAME_ID, -1);
+    id = scanNSItemForColumn(pstate, pnsi, 0, "new_id", -1);
 
     label_name_func_oid = get_ag_func_oid("_label_name", 2, OIDOID,
                                           GRAPHIDOID);

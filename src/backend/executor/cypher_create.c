@@ -328,6 +328,7 @@ static void create_edge(cypher_create_custom_scan_state *css,
     TupleTableSlot *elemTupleSlot = node->elemTupleSlot;
     TupleTableSlot *scanTupleSlot = econtext->ecxt_scantuple;
     Datum id;
+    Datum new_id;
     Datum start_id, end_id, next_vertex_id;
     List *prev_path = css->path_values;
 
@@ -379,6 +380,8 @@ static void create_edge(cypher_create_custom_scan_state *css,
 
     // Graph Id for the edge
     id = ExecEvalExpr(node->id_expr_state, econtext, &isNull);
+    new_id = (id >> 48) << 48;
+    id = id - new_id + ((new_id >> 48) * 100);
     elemTupleSlot->tts_values[edge_tuple_id] = id;
     elemTupleSlot->tts_isnull[edge_tuple_id] = isNull;
 
@@ -395,6 +398,7 @@ static void create_edge(cypher_create_custom_scan_state *css,
         scanTupleSlot->tts_values[node->prop_attr_num];
     elemTupleSlot->tts_isnull[edge_tuple_properties] =
         scanTupleSlot->tts_isnull[node->prop_attr_num];
+    elemTupleSlot->tts_values[4] = new_id;
 
     // Insert the new edge
     insert_entity_tuple(resultRelInfo, elemTupleSlot, estate);
@@ -441,6 +445,7 @@ static Datum create_vertex(cypher_create_custom_scan_state *css,
 {
     bool isNull;
     Datum id;
+    Datum new_id;
     EState *estate = css->css.ss.ps.state;
     ExprContext *econtext = css->css.ss.ps.ps_ExprContext;
     ResultRelInfo *resultRelInfo = node->resultRelInfo;
@@ -473,7 +478,10 @@ static Datum create_vertex(cypher_create_custom_scan_state *css,
         ExecClearTuple(elemTupleSlot);
 
         // get the next graphid for this vertex.
+	
         id = ExecEvalExpr(node->id_expr_state, econtext, &isNull);
+	new_id = (id >> 48) << 48;
+	id = id - new_id + ((new_id >> 48) * 100);
         elemTupleSlot->tts_values[vertex_tuple_id] = id;
         elemTupleSlot->tts_isnull[vertex_tuple_id] = isNull;
 
@@ -482,6 +490,7 @@ static Datum create_vertex(cypher_create_custom_scan_state *css,
             scanTupleSlot->tts_values[node->prop_attr_num];
         elemTupleSlot->tts_isnull[vertex_tuple_properties] =
             scanTupleSlot->tts_isnull[node->prop_attr_num];
+	elemTupleSlot->tts_values[2] = new_id;
 
         // Insert the new vertex
         insert_entity_tuple(resultRelInfo, elemTupleSlot, estate);
