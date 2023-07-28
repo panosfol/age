@@ -449,6 +449,11 @@ static Datum create_vertex(cypher_create_custom_scan_state *css,
 
     Assert(node->type == LABEL_KIND_VERTEX);
 
+    if (strcmp(node->label_name,"\"\"") == 0)
+    {
+        node->label_name = "";
+    }
+
     /*
      * Vertices in a path might already exists. If they do get the id
      * to pass to the edges before and after it. Otherwise, insert the
