@@ -17,19 +17,31 @@
  * under the License.
  */
 
+#include "access/sdir.h"
 #include "postgres.h"
 
 #include "access/xact.h"
 #include "commands/tablecmds.h"
 #include "nodes/makefuncs.h"
+#include "storage/lockdefs.h"
 #include "tcop/utility.h"
 #include "utils/acl.h"
+#include "utils/fmgroids.h"
 #include "utils/lsyscache.h"
+#include "access/skey.h"
+#include "access/table.h"
+#include "access/genam.h"
+#include "utils/palloc.h"
+#include "utils/rel.h"
+#include "access/tableam.h"
+#include "access/heapam.h"
+#include "utils/snapmgr.h"
 
 #include "commands/label_commands.h"
 #include "utils/ag_cache.h"
 #include "utils/agtype.h"
 #include "utils/junction_table.h"
+#include "catalog/ag_catalog.h"
 
 #define gen_label_relation_name(label_name);
 
@@ -41,6 +53,8 @@ static List *create_junc_table_table_elements(char *graph_name, char *label_name
 					      char *schema_name, char *rel_name);
 void drop_properties_column (char *label_name,
 			     char *schema_name, Oid nsp_id);
+int32 junction_table_label_id(const char *graph_name, Oid graph_oid, graphid element_graphid);
+Oid ag_junction_id(const char *graph_name, const char* table_name ,Oid graph_oid, char *table_kind);
 
 void create_junction_table(char *graph_name)
 {
@@ -192,4 +206,59 @@ void drop_properties_column(char *label_name,
     AlterTable(tbl_stmt, AccessExclusiveLock, &atuc);
 
     CommandCounterIncrement();
+}
+
+int32 junction_table_label_id(const char *graph_name, Oid graph_oid, graphid element_graphid)
+{
+    ScanKeyData scan_key[1];
+    TableScanDesc scan_desc;
+    HeapTuple tuple;
+    TupleDesc tupdesc;
+    Relation junc_table;
+    bool column_is_null = false;
+    int64 result;
+    Snapshot snapshot = GetActiveSnapshot();
+
+    ScanKeyInit(&scan_key[0], 1, BTEqualStrategyNumber, F_INT4EQ,
+		Int64GetDatum(element_graphid)); 
+    junc_table = table_open(ag_junction_table_id(graph_name, graph_oid), ShareLock);
+    /* scan_desc = systable_beginscan(junc_table, ag_junction_table_index_id(graph_name, graph_oid), true, NULL, 1, &scan_key); */
+    scan_desc = table_beginscan(junc_table, snapshot, 1, scan_key);
+    tuple = heap_getnext(scan_desc, ForwardScanDirection);
+    
+    if (!HeapTupleIsValid(tuple))
+    {
+        ereport(ERROR,
+                (errcode(ERRCODE_UNDEFINED_TABLE),
+                 errmsg("Entry %lu does not exist", element_graphid)));
+    }
+    tupdesc = RelationGetDescr(junc_table);
+    
+    if (tupdesc->natts != Natts_ag_junction_table)
+    {
+        ereport(ERROR,
+                (errcode(ERRCODE_UNDEFINED_TABLE),
+                 errmsg("Invalid number of attributes for %s.%s", graph_name, AG_JUNCTION_TABLE)));
+    }
+    /* result = DatumGetInt64(heap_getattr(tuple, Anum_ag_junc_label_id, */
+    /*                                             tupdesc, &column_is_null)); */
+    result = column_get_datum(tupdesc, tuple, 0, "id", INT8OID, true);
+    table_endscan(scan_desc);
+    table_close(junc_table, ShareLock);
+
+    return result;
+}
+
+Oid ag_junction_id(const char *graph_name, const char* table_name ,Oid graph_oid, char *table_kind)
+{
+    Oid id;
+
+    id = get_relname_relid(table_name, graph_oid);
+    if (!OidIsValid(id))
+    {
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_TABLE),
+                        errmsg("Junction %s doesn't exist", table_kind)));
+    }
+
+    return id;
 }

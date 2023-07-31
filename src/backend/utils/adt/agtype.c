@@ -68,6 +68,7 @@
 #include "catalog/ag_label.h"
 #include "utils/graphid.h"
 #include "utils/numeric.h"
+#include "utils/junction_table.h"
 
 /* State structure for Percentile aggregate functions */
 typedef struct PercentileGroupAggState
@@ -4708,8 +4709,9 @@ static char *get_label_name(const char *graph_name, graphid element_graphid)
     char *result = NULL;
     bool column_is_null = false;
     Oid graph_oid = get_graph_oid(graph_name);
-    int32 label_id = get_graphid_label_id(element_graphid);
-
+    int32 label_id = junction_table_label_id(graph_name, graph_oid, element_graphid);
+    //int32 label_id = get_graphid_label_id(element_graphid);
+    
     /* scankey for first match in ag_label, column 2, graphoid, BTEQ, OidEQ */
     ScanKeyInit(&scan_keys[0], Anum_ag_label_graph, BTEqualStrategyNumber,
                 F_OIDEQ, ObjectIdGetDatum(graph_oid));
