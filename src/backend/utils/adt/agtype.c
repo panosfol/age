@@ -5536,7 +5536,7 @@ Datum age_tointeger(PG_FUNCTION_ARGS)
  
             if (*endptr != '\0')
             {
-                float f;
+                float8 f;
 
                 f = float8in_internal_null(string, NULL, "double precision",
                                            string, &is_valid);
